@@ -10,7 +10,7 @@ impl Node {
     pub fn new(entry: Option<Entry>, height: usize) -> *mut Node {
         // build tower: a vector of 'height' AtomicPtrs initialized to null
         let mut tower = Vec::with_capacity(height);
-        
+
         for _ in 0..height {
             tower.push(AtomicPtr::new(std::ptr::null_mut()));
         }
