@@ -64,6 +64,62 @@ impl SkipList {
 
         self.length.fetch_add(1, Ordering::Relaxed);
     }
+
+    pub fn get(&self, key: &[u8]) -> Option<&Entry> {
+        let mut current = self.head;
+
+        for level in (0..self.height.load(Ordering::Acquire)).rev() {
+            loop {
+                let next = unsafe {
+                    (*current).tower[level].load(Ordering::Acquire)
+                };
+
+                if next.is_null() {
+                    break;
+                }
+
+                let next_key = unsafe {
+                    (*next).entry.as_ref().unwrap().key.as_slice()
+                };
+
+                if next_key < key {
+                    current = next;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        let candidate = unsafe { (*current).tower[0].load(Ordering::Acquire) };
+
+        if candidate.is_null() {
+            return None;
+        }
+
+        let entry = unsafe { (*candidate).entry.as_ref().unwrap() };
+
+        if entry.key.as_slice() == key {
+            return Some(entry)
+        } else {
+            None
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Entry> {
+        let mut entries = Vec::new();
+        let mut current = unsafe {
+            (*self.head).tower[0].load(Ordering::Acquire)
+        };
+
+        while current != std::ptr::null_mut() {
+            let entry = unsafe { (*current).entry.as_ref().unwrap() };
+            entries.push(entry);
+
+            current = unsafe { (*current).tower[0].load(Ordering::Acquire) };
+        }
+
+        entries.into_iter()
+    }
 }
 
 fn random_height() -> usize {
