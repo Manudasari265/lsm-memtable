@@ -104,6 +104,22 @@ impl SkipList {
             None
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Entry> {
+        let mut entries = Vec::new();
+        let mut current = unsafe {
+            (*self.head).tower[0].load(Ordering::Acquire)
+        };
+
+        while current != std::ptr::null_mut() {
+            let entry = unsafe { (*current).entry.as_ref().unwrap() };
+            entries.push(entry);
+
+            current = unsafe { (*current).tower[0].load(Ordering::Acquire) };
+        }
+
+        entries.into_iter()
+    }
 }
 
 fn random_height() -> usize {
