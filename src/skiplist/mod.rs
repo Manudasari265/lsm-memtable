@@ -30,14 +30,14 @@ impl SkipList {
         for level in (0..self.height.load(Ordering::SeqCst)).rev() {
             loop {
                 let next = unsafe { (*current).tower[level].load(Ordering::Acquire) };
-              
+
                 if next.is_null() {
                     preds[level] = current;
                     break;
                 }
 
                 let next_key = unsafe { (*next).entry.as_ref().unwrap().key.as_slice() };
-                let new_node_key = unsafe { (*new_node).entry.as_ref().unwrap().key.as_slice() };  
+                let new_node_key = unsafe { (*new_node).entry.as_ref().unwrap().key.as_slice() };
 
                 if next_key < new_node_key {
                     current = next;
@@ -45,7 +45,6 @@ impl SkipList {
                     preds[level] = current;
                     break;
                 }
-
             }
         }
 
@@ -70,17 +69,13 @@ impl SkipList {
 
         for level in (0..self.height.load(Ordering::Acquire)).rev() {
             loop {
-                let next = unsafe {
-                    (*current).tower[level].load(Ordering::Acquire)
-                };
+                let next = unsafe { (*current).tower[level].load(Ordering::Acquire) };
 
                 if next.is_null() {
                     break;
                 }
 
-                let next_key = unsafe {
-                    (*next).entry.as_ref().unwrap().key.as_slice()
-                };
+                let next_key = unsafe { (*next).entry.as_ref().unwrap().key.as_slice() };
 
                 if next_key < key {
                     current = next;
@@ -99,7 +94,7 @@ impl SkipList {
         let entry = unsafe { (*candidate).entry.as_ref().unwrap() };
 
         if entry.key.as_slice() == key {
-            return Some(entry)
+            return Some(entry);
         } else {
             None
         }
@@ -107,9 +102,7 @@ impl SkipList {
 
     pub fn iter(&self) -> impl Iterator<Item = &Entry> {
         let mut entries = Vec::new();
-        let mut current = unsafe {
-            (*self.head).tower[0].load(Ordering::Acquire)
-        };
+        let mut current = unsafe { (*self.head).tower[0].load(Ordering::Acquire) };
 
         while current != std::ptr::null_mut() {
             let entry = unsafe { (*current).entry.as_ref().unwrap() };
