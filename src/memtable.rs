@@ -11,6 +11,14 @@ pub struct Memtable {
 }
 
 impl Memtable {
+    pub fn new() -> Self {
+        Memtable {
+            skiplist: SkipList::new(),
+            size: AtomicUsize::new(0),
+            next_seqno: AtomicU64::new(0),
+        }
+    }
+
     pub fn put(&self, key: Vec<u8>, value: Vec<u8>) {
         let seqno = self.next_seqno.fetch_add(1, Ordering::Relaxed);
         let size = key.len() + value.len();
@@ -20,6 +28,21 @@ impl Memtable {
             value,
             sequence_number: seqno,
             value_type: ValueType::Put,
+        };
+
+        self.skiplist.insert(entry);
+        self.size.fetch_add(size, Ordering::Relaxed);
+    }
+
+    pub fn delete(&self, key: Vec<u8>) {
+        let seqno = self.next_seqno.fetch_add(1, Ordering::Relaxed);
+        let size = key.len();
+
+        let entry = Entry {
+            key, 
+            value: Vec::new(), // for delete the value is empty
+            sequence_number: seqno,
+            value_type: ValueType::Delete,
         };
 
         self.skiplist.insert(entry);
