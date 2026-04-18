@@ -2,7 +2,7 @@
 
 Lock-free in-memory write buffer built on an atomic skiplist — the hot path before data hits disk in an LSM tree.
 
-Been exploring lock-free concurrency in Rust. This is the write buffer layer, same class of agave's accounts-db about account state in AccountsDB
+Been exploring lock-free concurrency in Rust. This is the write buffer layer, same class of agave's accounts-db about account state in AccountsDB (still experimental)
 
 ## What's here
 
