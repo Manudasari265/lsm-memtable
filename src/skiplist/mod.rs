@@ -24,7 +24,7 @@ impl SkipList {
         let height = random_height();
         let new_node = Node::new(Some(entry), height);
 
-        let mut preds = vec![self.head; MAX_HEIGHT];
+        let mut preds = [self.head; MAX_HEIGHT];
         let mut current = self.head;
 
         for level in (0..self.height.load(Ordering::SeqCst)).rev() {
@@ -48,6 +48,7 @@ impl SkipList {
             }
         }
 
+        #[allow(clippy::needless_range_loop)]
         for level in 0..height {
             let next = unsafe { (*preds[level]).tower[level].load(Ordering::Acquire) };
 
@@ -88,13 +89,13 @@ impl SkipList {
         let candidate = unsafe { (*current).tower[0].load(Ordering::Acquire) };
 
         if candidate.is_null() {
-            return None;
+            return None; // early return, not a needless return
         }
 
         let entry = unsafe { (*candidate).entry.as_ref().unwrap() };
 
         if entry.key.as_slice() == key {
-            return Some(entry);
+            Some(entry)
         } else {
             None
         }
@@ -104,7 +105,7 @@ impl SkipList {
         let mut entries = Vec::new();
         let mut current = unsafe { (*self.head).tower[0].load(Ordering::Acquire) };
 
-        while current != std::ptr::null_mut() {
+        while !current.is_null() {
             let entry = unsafe { (*current).entry.as_ref().unwrap() };
             entries.push(entry);
 
@@ -112,6 +113,12 @@ impl SkipList {
         }
 
         entries.into_iter()
+    }
+}
+
+impl Default for SkipList {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

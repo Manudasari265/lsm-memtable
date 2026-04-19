@@ -66,3 +66,9 @@ impl Memtable {
         self.skiplist.iter()
     }
 }
+
+impl Default for Memtable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
