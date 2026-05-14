@@ -155,8 +155,7 @@ impl SSTable {
 
         let block_offset = index_entries
             .iter()
-            .filter(|e| e.first_key.as_slice() <= target_key)
-            .next_back()
+            .rfind(|e| e.first_key.as_slice() <= target_key)
             .map(|e| e.block_offset);
 
         let block_offset = match block_offset {
@@ -205,7 +204,6 @@ impl SSTable {
 
     pub fn scan(path: &Path, start: &[u8], end: &[u8]) -> Result<Vec<Entry>, std::io::Error> {
         let mut file = File::open(path)?;
-
 
         file.seek(SeekFrom::End(-16))?;
         let mut footer = [0u8; 16];
