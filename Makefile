@@ -22,3 +22,4 @@ bench:
 
 clean:
 	cargo clean
+
