@@ -101,7 +101,6 @@ impl SSTable {
             });
         }
 
-        //? write index block
         let index_offset = bytes_written;
 
         writer.write_all(&(index_entries.len() as u32).to_le_bytes())?;
@@ -116,7 +115,6 @@ impl SSTable {
 
         let index_length = bytes_written - index_offset;
 
-        //? write footer (last 16 bytes)
         writer.write_all(&index_offset.to_le_bytes())?;
         writer.write_all(&index_length.to_le_bytes())?;
 
@@ -231,7 +229,6 @@ impl SSTable {
             });
         }
 
-        //? find all candidate blocks: first_key <= end (may contain keys >= start)
         let candidate_offsets: Vec<u64> = index_entries
             .iter()
             .filter(|e| e.first_key.as_slice() <= end)
@@ -279,5 +276,89 @@ impl SSTable {
         }
 
         Ok(results)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env::temp_dir;
+
+    fn make_memtable(entries: Vec<(&str, &str)>) -> Memtable {
+        let mt = Memtable::new();
+        for (k, v) in entries {
+            mt.put(k.as_bytes().to_vec(), v.as_bytes().to_vec());
+        }
+        mt
+    }
+
+    #[test]
+    fn test_flush_creates_file() {
+        let mt = make_memtable(vec![("apple", "1"), ("banana", "2"), ("cherry", "3")]);
+        let path = temp_dir().join("test_flush.sst");
+        let result = SSTable::flush(&mt, &path);
+        assert!(result.is_ok());
+        assert!(path.exists());
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn test_get_existing_key() {
+        let mt = make_memtable(vec![("apple", "1"), ("banana", "2"), ("cherry", "3")]);
+        let path = temp_dir().join("test_get.sst");
+        SSTable::flush(&mt, &path).unwrap();
+
+        let entry = SSTable::get(&path, b"banana").unwrap();
+        assert!(entry.is_some());
+        assert_eq!(entry.unwrap().value, b"2");
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn test_get_missing_key() {
+        let mt = make_memtable(vec![("apple", "1"), ("cherry", "3")]);
+        let path = temp_dir().join("test_get_missing.sst");
+        SSTable::flush(&mt, &path).unwrap();
+
+        let entry = SSTable::get(&path, b"banana").unwrap();
+        assert!(entry.is_none());
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn test_scan_range() {
+        let mt = make_memtable(vec![
+            ("apple", "1"),
+            ("banana", "2"),
+            ("cherry", "3"),
+            ("date", "4"),
+            ("elderberry", "5"),
+        ]);
+        let path = temp_dir().join("test_scan.sst");
+        SSTable::flush(&mt, &path).unwrap();
+
+        let results = SSTable::scan(&path, b"banana", b"date").unwrap();
+        let keys: Vec<&[u8]> = results.iter().map(|e| e.key.as_slice()).collect();
+        assert!(keys.contains(&b"banana".as_slice()));
+        assert!(keys.contains(&b"cherry".as_slice()));
+        assert!(keys.contains(&b"date".as_slice()));
+        assert!(!keys.contains(&b"apple".as_slice()));
+        assert!(!keys.contains(&b"elderberry".as_slice()));
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn test_flush_and_get_delete_tombstone() {
+        let mt = Memtable::new();
+        mt.put(b"key1".to_vec(), b"val1".to_vec());
+        mt.delete(b"key1".to_vec());
+        let path = temp_dir().join("test_tombstone.sst");
+        SSTable::flush(&mt, &path).unwrap();
+
+        let entry = SSTable::get(&path, b"key1").unwrap();
+        assert!(entry.is_some());
+        let e = entry.unwrap();
+        assert!(matches!(e.value_type, ValueType::Delete));
+        std::fs::remove_file(&path).unwrap();
     }
 }
